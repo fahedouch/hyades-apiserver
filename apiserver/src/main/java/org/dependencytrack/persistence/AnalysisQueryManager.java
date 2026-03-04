@@ -28,6 +28,7 @@ import org.dependencytrack.model.AnalysisResponse;
 import org.dependencytrack.model.AnalysisState;
 import org.dependencytrack.model.Component;
 import org.dependencytrack.model.Project;
+import org.dependencytrack.model.RatingSource;
 import org.dependencytrack.model.Vulnerability;
 import org.dependencytrack.notification.JdoNotificationEmitter;
 import org.dependencytrack.notification.NotificationModelConverter;
@@ -35,6 +36,7 @@ import org.dependencytrack.persistence.command.MakeAnalysisCommand;
 
 import javax.jdo.PersistenceManager;
 import javax.jdo.Query;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -138,6 +140,74 @@ public class AnalysisQueryManager extends QueryManager implements IQueryManager 
                 suppressionChanged = true;
             }
 
+            // Handle CVSS v2 rating with precedence
+            if (command.cvssV2Vector() != null || command.cvssV2Score() != null) {
+                if (canUpdateRating(analysis.getCvssV2Source(), command.cvssV2Source())) {
+                    if (command.cvssV2Vector() != null && !command.cvssV2Vector().equals(analysis.getCvssV2Vector())) {
+                        auditTrailComments.add("CVSS v2 Vector: %s → %s (Source: %s)".formatted(
+                                analysis.getCvssV2Vector(), command.cvssV2Vector(), command.cvssV2Source()));
+                        analysis.setCvssV2Vector(command.cvssV2Vector());
+                    }
+                    if (command.cvssV2Score() != null && !command.cvssV2Score().equals(analysis.getCvssV2Score())) {
+                        auditTrailComments.add("CVSS v2 Score: %s → %s (Source: %s)".formatted(
+                                analysis.getCvssV2Score(), command.cvssV2Score(), command.cvssV2Source()));
+                        analysis.setCvssV2Score(command.cvssV2Score());
+                    }
+                    analysis.setCvssV2Source(command.cvssV2Source());
+                }
+            }
+
+            // Handle CVSS v3 rating with precedence
+            if (command.cvssV3Vector() != null || command.cvssV3Score() != null) {
+                if (canUpdateRating(analysis.getCvssV3Source(), command.cvssV3Source())) {
+                    if (command.cvssV3Vector() != null && !command.cvssV3Vector().equals(analysis.getCvssV3Vector())) {
+                        auditTrailComments.add("CVSS v3 Vector: %s → %s (Source: %s)".formatted(
+                                analysis.getCvssV3Vector(), command.cvssV3Vector(), command.cvssV3Source()));
+                        analysis.setCvssV3Vector(command.cvssV3Vector());
+                    }
+                    if (command.cvssV3Score() != null && !command.cvssV3Score().equals(analysis.getCvssV3Score())) {
+                        auditTrailComments.add("CVSS v3 Score: %s → %s (Source: %s)".formatted(
+                                analysis.getCvssV3Score(), command.cvssV3Score(), command.cvssV3Source()));
+                        analysis.setCvssV3Score(command.cvssV3Score());
+                    }
+                    analysis.setCvssV3Source(command.cvssV3Source());
+                }
+            }
+
+            // Handle CVSS v4 rating with precedence
+            if (command.cvssV4Vector() != null || command.cvssV4Score() != null) {
+                if (canUpdateRating(analysis.getCvssV4Source(), command.cvssV4Source())) {
+                    if (command.cvssV4Vector() != null && !command.cvssV4Vector().equals(analysis.getCvssV4Vector())) {
+                        auditTrailComments.add("CVSS v4 Vector: %s → %s (Source: %s)".formatted(
+                                analysis.getCvssV4Vector(), command.cvssV4Vector(), command.cvssV4Source()));
+                        analysis.setCvssV4Vector(command.cvssV4Vector());
+                    }
+                    if (command.cvssV4Score() != null && !command.cvssV4Score().equals(analysis.getCvssV4Score())) {
+                        auditTrailComments.add("CVSS v4 Score: %s → %s (Source: %s)".formatted(
+                                analysis.getCvssV4Score(), command.cvssV4Score(), command.cvssV4Source()));
+                        analysis.setCvssV4Score(command.cvssV4Score());
+                    }
+                    analysis.setCvssV4Source(command.cvssV4Source());
+                }
+            }
+
+            // Handle OWASP rating with precedence
+            if (command.owaspVector() != null || command.owaspScore() != null) {
+                if (canUpdateRating(analysis.getOwaspSource(), command.owaspSource())) {
+                    if (command.owaspVector() != null && !command.owaspVector().equals(analysis.getOwaspVector())) {
+                        auditTrailComments.add("OWASP RR Vector: %s → %s (Source: %s)".formatted(
+                                analysis.getOwaspVector(), command.owaspVector(), command.owaspSource()));
+                        analysis.setOwaspVector(command.owaspVector());
+                    }
+                    if (command.owaspScore() != null && !command.owaspScore().equals(analysis.getOwaspScore())) {
+                        auditTrailComments.add("OWASP RR Score: %s → %s (Source: %s)".formatted(
+                                analysis.getOwaspScore(), command.owaspScore(), command.owaspSource()));
+                        analysis.setOwaspScore(command.owaspScore());
+                    }
+                    analysis.setOwaspSource(command.owaspSource());
+                }
+            }
+
             final List<String> comments =
                     !command.options().contains(MakeAnalysisCommand.Option.OMIT_AUDIT_TRAIL)
                             ? auditTrailComments
@@ -209,6 +279,28 @@ public class AnalysisQueryManager extends QueryManager implements IQueryManager 
                 analysis.setAnalysisComments(analysisComments);
             }
         });
+    }
+
+    /**
+     * Determines if a rating can be updated based on the precedence rules of rating sources.
+     * <p>
+     * Precedence order (highest to lowest):
+     * <ol>
+     *   <li>MANUAL - User-provided ratings</li>
+     *   <li>VEX - Ratings from VEX documents</li>
+     *   <li>POLICY - Ratings from organizational policies</li>
+     *   <li>NVD - Default ratings from vulnerability databases</li>
+     * </ol>
+     *
+     * @param existingSource the current rating source (may be null if no rating exists)
+     * @param newSource      the new rating source attempting to update the rating
+     * @return true if the new source can overwrite the existing source, false otherwise
+     */
+    private boolean canUpdateRating(final RatingSource existingSource, final RatingSource newSource) {
+        if (newSource == null) {
+            return false;
+        }
+        return newSource.canOverwrite(existingSource);
     }
 
 }

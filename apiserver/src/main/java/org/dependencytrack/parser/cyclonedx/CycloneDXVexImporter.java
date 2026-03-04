@@ -29,6 +29,7 @@ import org.dependencytrack.model.AnalysisState;
 import org.dependencytrack.model.Component;
 import org.dependencytrack.model.ComponentIdentity;
 import org.dependencytrack.model.Project;
+import org.dependencytrack.model.RatingSource;
 import org.dependencytrack.model.Vulnerability;
 import org.dependencytrack.parser.cyclonedx.util.ModelConverter;
 import org.dependencytrack.persistence.QueryManager;
@@ -175,14 +176,44 @@ public class CycloneDXVexImporter {
                     ? qm.getObjectById(Vulnerability.class, vuln.getId())
                     : vuln;
 
-            qm.makeAnalysis(
-                    new MakeAnalysisCommand(persistentComponent, persistentVuln)
-                            .withState(state)
-                            .withJustification(justification)
-                            .withResponse(response)
-                            .withDetails(cdxVuln.getAnalysis().getDetail())
-                            .withCommenter(COMMENTER)
-                            .withSuppress(isSuppressed));
+            MakeAnalysisCommand command = new MakeAnalysisCommand(persistentComponent, persistentVuln)
+                    .withState(state)
+                    .withJustification(justification)
+                    .withResponse(response)
+                    .withDetails(cdxVuln.getAnalysis().getDetail())
+                    .withCommenter(COMMENTER)
+                    .withSuppress(isSuppressed);
+
+            // Import ratings (CVSS and OWASP) from VEX with RatingSource.VEX
+            if (cdxVuln.getRatings() != null && !cdxVuln.getRatings().isEmpty()) {
+                for (final org.cyclonedx.model.vulnerability.Vulnerability.Rating rating : cdxVuln.getRatings()) {
+                    if (rating.getMethod() == org.cyclonedx.model.vulnerability.Vulnerability.Rating.Method.CVSSV2
+                            && rating.getVector() != null) {
+                        command = command.withCvssV2(
+                                rating.getVector(),
+                                rating.getScore(),
+                                RatingSource.VEX);
+                    } else if (rating.getMethod() == org.cyclonedx.model.vulnerability.Vulnerability.Rating.Method.CVSSV3
+                            || rating.getMethod() == org.cyclonedx.model.vulnerability.Vulnerability.Rating.Method.CVSSV31) {
+                        command = command.withCvssV3(
+                                rating.getVector(),
+                                rating.getScore(),
+                                RatingSource.VEX);
+                    } else if (rating.getMethod() == org.cyclonedx.model.vulnerability.Vulnerability.Rating.Method.CVSSV4) {
+                        command = command.withCvssV4(
+                                rating.getVector(),
+                                rating.getScore(),
+                                RatingSource.VEX);
+                    } else if (rating.getMethod() == org.cyclonedx.model.vulnerability.Vulnerability.Rating.Method.OWASP) {
+                        command = command.withOwasp(
+                                rating.getVector(),
+                                rating.getScore(),
+                                RatingSource.VEX);
+                    }
+                }
+            }
+
+            qm.makeAnalysis(command);
         });
     }
 }
