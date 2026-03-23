@@ -122,11 +122,6 @@ public class Analysis implements Serializable {
     @JsonProperty(value = "cvssV2Score")
     private BigDecimal cvssV2Score;
 
-    @Persistent(defaultFetchGroup = "true")
-    @Column(name = "CVSSV2SOURCE", jdbcType = "VARCHAR")
-    @JsonProperty(value = "cvssV2Source")
-    private RatingSource cvssV2Source;
-
     @Persistent
     @Column(name = "CVSSV3VECTOR")
     @JsonProperty(value = "cvssV3Vector")
@@ -137,11 +132,6 @@ public class Analysis implements Serializable {
     @JsonProperty(value = "cvssV3Score")
     private BigDecimal cvssV3Score;
 
-    @Persistent(defaultFetchGroup = "true")
-    @Column(name = "CVSSV3SOURCE", jdbcType = "VARCHAR")
-    @JsonProperty(value = "cvssV3Source")
-    private RatingSource cvssV3Source;
-
     @Persistent
     @Column(name = "CVSSV4VECTOR")
     @JsonProperty(value = "cvssV4Vector")
@@ -151,11 +141,6 @@ public class Analysis implements Serializable {
     @Column(name = "CVSSV4SCORE")
     @JsonProperty(value = "cvssV4Score")
     private BigDecimal cvssV4Score;
-
-    @Persistent(defaultFetchGroup = "true")
-    @Column(name = "CVSSV4SOURCE", jdbcType = "VARCHAR")
-    @JsonProperty(value = "cvssV4Source")
-    private RatingSource cvssV4Source;
 
     @Persistent
     @Column(name = "OWASPVECTOR")
@@ -278,14 +263,6 @@ public class Analysis implements Serializable {
         this.cvssV2Score = cvssV2Score;
     }
 
-    public RatingSource getCvssV2Source() {
-        return cvssV2Source;
-    }
-
-    public void setCvssV2Source(RatingSource cvssV2Source) {
-        this.cvssV2Source = cvssV2Source;
-    }
-
     public String getCvssV3Vector() {
         return cvssV3Vector;
     }
@@ -302,14 +279,6 @@ public class Analysis implements Serializable {
         this.cvssV3Score = cvssV3Score;
     }
 
-    public RatingSource getCvssV3Source() {
-        return cvssV3Source;
-    }
-
-    public void setCvssV3Source(RatingSource cvssV3Source) {
-        this.cvssV3Source = cvssV3Source;
-    }
-
     public String getCvssV4Vector() {
         return cvssV4Vector;
     }
@@ -324,14 +293,6 @@ public class Analysis implements Serializable {
 
     public void setCvssV4Score(BigDecimal cvssV4Score) {
         this.cvssV4Score = cvssV4Score;
-    }
-
-    public RatingSource getCvssV4Source() {
-        return cvssV4Source;
-    }
-
-    public void setCvssV4Source(RatingSource cvssV4Source) {
-        this.cvssV4Source = cvssV4Source;
     }
 
     public String getOwaspVector() {

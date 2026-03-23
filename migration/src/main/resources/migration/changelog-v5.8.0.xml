@@ -6,27 +6,9 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
             http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-    <!-- Add rating source columns to ANALYSIS table for tracking the origin of CVSS and OWASP ratings -->
+    <!-- Add OWASP rating source column to ANALYSIS table for tracking the origin of OWASP ratings -->
     <changeSet id="v5.8.0-1" author="fahedouch">
-        <comment>Add rating source tracking columns to ANALYSIS table to support context-aware VEX ratings</comment>
-
-        <addColumn tableName="ANALYSIS">
-            <column name="CVSSV2SOURCE" type="VARCHAR(50)">
-                <constraints nullable="true"/>
-            </column>
-        </addColumn>
-
-        <addColumn tableName="ANALYSIS">
-            <column name="CVSSV3SOURCE" type="VARCHAR(50)">
-                <constraints nullable="true"/>
-            </column>
-        </addColumn>
-
-        <addColumn tableName="ANALYSIS">
-            <column name="CVSSV4SOURCE" type="VARCHAR(50)">
-                <constraints nullable="true"/>
-            </column>
-        </addColumn>
+        <comment>Add OWASP rating source column to ANALYSIS table to support context-aware VEX ratings</comment>
 
         <addColumn tableName="ANALYSIS">
             <column name="OWASPSOURCE" type="VARCHAR(50)">
@@ -35,21 +17,9 @@
         </addColumn>
     </changeSet>
 
-    <!-- Create indexes for rating source columns for performance optimization -->
+    <!-- Create index for OWASP rating source column for performance optimization -->
     <changeSet id="v5.8.0-2" author="fahedouch">
-        <comment>Create indexes on rating source columns for query performance</comment>
-
-        <createIndex indexName="ANALYSIS_CVSSV2SOURCE_IDX" tableName="ANALYSIS">
-            <column name="CVSSV2SOURCE"/>
-        </createIndex>
-
-        <createIndex indexName="ANALYSIS_CVSSV3SOURCE_IDX" tableName="ANALYSIS">
-            <column name="CVSSV3SOURCE"/>
-        </createIndex>
-
-        <createIndex indexName="ANALYSIS_CVSSV4SOURCE_IDX" tableName="ANALYSIS">
-            <column name="CVSSV4SOURCE"/>
-        </createIndex>
+        <comment>Create index on OWASP rating source column for query performance</comment>
 
         <createIndex indexName="ANALYSIS_OWASPSOURCE_IDX" tableName="ANALYSIS">
             <column name="OWASPSOURCE"/>

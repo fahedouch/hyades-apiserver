@@ -140,57 +140,6 @@ public class AnalysisQueryManager extends QueryManager implements IQueryManager 
                 suppressionChanged = true;
             }
 
-            // Handle CVSS v2 rating with precedence
-            if (command.cvssV2Vector() != null || command.cvssV2Score() != null) {
-                if (canUpdateRating(analysis.getCvssV2Source(), command.cvssV2Source())) {
-                    if (command.cvssV2Vector() != null && !command.cvssV2Vector().equals(analysis.getCvssV2Vector())) {
-                        auditTrailComments.add("CVSS v2 Vector: %s → %s (Source: %s)".formatted(
-                                analysis.getCvssV2Vector(), command.cvssV2Vector(), command.cvssV2Source()));
-                        analysis.setCvssV2Vector(command.cvssV2Vector());
-                    }
-                    if (command.cvssV2Score() != null && !command.cvssV2Score().equals(analysis.getCvssV2Score())) {
-                        auditTrailComments.add("CVSS v2 Score: %s → %s (Source: %s)".formatted(
-                                analysis.getCvssV2Score(), command.cvssV2Score(), command.cvssV2Source()));
-                        analysis.setCvssV2Score(command.cvssV2Score());
-                    }
-                    analysis.setCvssV2Source(command.cvssV2Source());
-                }
-            }
-
-            // Handle CVSS v3 rating with precedence
-            if (command.cvssV3Vector() != null || command.cvssV3Score() != null) {
-                if (canUpdateRating(analysis.getCvssV3Source(), command.cvssV3Source())) {
-                    if (command.cvssV3Vector() != null && !command.cvssV3Vector().equals(analysis.getCvssV3Vector())) {
-                        auditTrailComments.add("CVSS v3 Vector: %s → %s (Source: %s)".formatted(
-                                analysis.getCvssV3Vector(), command.cvssV3Vector(), command.cvssV3Source()));
-                        analysis.setCvssV3Vector(command.cvssV3Vector());
-                    }
-                    if (command.cvssV3Score() != null && !command.cvssV3Score().equals(analysis.getCvssV3Score())) {
-                        auditTrailComments.add("CVSS v3 Score: %s → %s (Source: %s)".formatted(
-                                analysis.getCvssV3Score(), command.cvssV3Score(), command.cvssV3Source()));
-                        analysis.setCvssV3Score(command.cvssV3Score());
-                    }
-                    analysis.setCvssV3Source(command.cvssV3Source());
-                }
-            }
-
-            // Handle CVSS v4 rating with precedence
-            if (command.cvssV4Vector() != null || command.cvssV4Score() != null) {
-                if (canUpdateRating(analysis.getCvssV4Source(), command.cvssV4Source())) {
-                    if (command.cvssV4Vector() != null && !command.cvssV4Vector().equals(analysis.getCvssV4Vector())) {
-                        auditTrailComments.add("CVSS v4 Vector: %s → %s (Source: %s)".formatted(
-                                analysis.getCvssV4Vector(), command.cvssV4Vector(), command.cvssV4Source()));
-                        analysis.setCvssV4Vector(command.cvssV4Vector());
-                    }
-                    if (command.cvssV4Score() != null && !command.cvssV4Score().equals(analysis.getCvssV4Score())) {
-                        auditTrailComments.add("CVSS v4 Score: %s → %s (Source: %s)".formatted(
-                                analysis.getCvssV4Score(), command.cvssV4Score(), command.cvssV4Source()));
-                        analysis.setCvssV4Score(command.cvssV4Score());
-                    }
-                    analysis.setCvssV4Source(command.cvssV4Source());
-                }
-            }
-
             // Handle OWASP rating with precedence
             if (command.owaspVector() != null || command.owaspScore() != null) {
                 if (canUpdateRating(analysis.getOwaspSource(), command.owaspSource())) {

@@ -42,15 +42,6 @@ import static java.util.Objects.requireNonNull;
  * @param suppress      Whether to suppress the finding
  * @param commenter     Name of the principal on which behalf audit trail entries will be created
  * @param comment       The comment to add to the audit trail
- * @param cvssV2Vector  CVSS v2 vector to set
- * @param cvssV2Score   CVSS v2 score to set
- * @param cvssV2Source  Source of CVSS v2 rating
- * @param cvssV3Vector  CVSS v3 vector to set
- * @param cvssV3Score   CVSS v3 score to set
- * @param cvssV3Source  Source of CVSS v3 rating
- * @param cvssV4Vector  CVSS v4 vector to set
- * @param cvssV4Score   CVSS v4 score to set
- * @param cvssV4Source  Source of CVSS v4 rating
  * @param owaspVector   OWASP RR vector to set
  * @param owaspScore    OWASP RR score to set
  * @param owaspSource   Source of OWASP RR rating
@@ -67,15 +58,6 @@ public record MakeAnalysisCommand(
         Boolean suppress,
         String commenter,
         String comment,
-        String cvssV2Vector,
-        BigDecimal cvssV2Score,
-        RatingSource cvssV2Source,
-        String cvssV3Vector,
-        BigDecimal cvssV3Score,
-        RatingSource cvssV3Source,
-        String cvssV4Vector,
-        BigDecimal cvssV4Score,
-        RatingSource cvssV4Source,
         String owaspVector,
         BigDecimal owaspScore,
         RatingSource owaspSource,
@@ -104,56 +86,43 @@ public record MakeAnalysisCommand(
 
     public MakeAnalysisCommand(final Component component, final Vulnerability vulnerability) {
         this(component, vulnerability, null, null, null, null, null, null, null,
-             null, null, null, null, null, null, null, null, null, null, null, null,
-             Collections.emptySet());
+             null, null, null, Collections.emptySet());
     }
 
     public MakeAnalysisCommand withState(final AnalysisState state) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, state, this.justification, this.response, this.details, this.suppress, this.commenter, this.comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
+        return new MakeAnalysisCommand(this.component, this.vulnerability, state, this.justification, this.response, this.details, this.suppress, this.commenter, this.comment, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
     }
 
     public MakeAnalysisCommand withJustification(final AnalysisJustification justification) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, justification, this.response, this.details, this.suppress, this.commenter, this.comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
+        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, justification, this.response, this.details, this.suppress, this.commenter, this.comment, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
     }
 
     public MakeAnalysisCommand withResponse(final AnalysisResponse response) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, response, this.details, this.suppress, this.commenter, this.comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
+        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, response, this.details, this.suppress, this.commenter, this.comment, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
     }
 
     public MakeAnalysisCommand withDetails(final String detail) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, detail, this.suppress, this.commenter, this.comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
+        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, detail, this.suppress, this.commenter, this.comment, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
     }
 
     public MakeAnalysisCommand withSuppress(final Boolean suppress) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, suppress, this.commenter, this.comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
+        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, suppress, this.commenter, this.comment, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
     }
 
     public MakeAnalysisCommand withCommenter(final String commenter) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, commenter, this.comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
+        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, commenter, this.comment, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
     }
 
     public MakeAnalysisCommand withComment(final String comment) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, this.commenter, comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
-    }
-
-    public MakeAnalysisCommand withCvssV2(final String vector, final BigDecimal score, final RatingSource source) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, this.commenter, this.comment, vector, score, source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
-    }
-
-    public MakeAnalysisCommand withCvssV3(final String vector, final BigDecimal score, final RatingSource source) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, this.commenter, this.comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, vector, score, source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
-    }
-
-    public MakeAnalysisCommand withCvssV4(final String vector, final BigDecimal score, final RatingSource source) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, this.commenter, this.comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, vector, score, source, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
+        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, this.commenter, comment, this.owaspVector, this.owaspScore, this.owaspSource, this.options);
     }
 
     public MakeAnalysisCommand withOwasp(final String vector, final BigDecimal score, final RatingSource source) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, this.commenter, this.comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, vector, score, source, this.options);
+        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, this.commenter, this.comment, vector, score, source, this.options);
     }
 
     public MakeAnalysisCommand withOptions(final Set<Option> options) {
-        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, this.commenter, this.comment, this.cvssV2Vector, this.cvssV2Score, this.cvssV2Source, this.cvssV3Vector, this.cvssV3Score, this.cvssV3Source, this.cvssV4Vector, this.cvssV4Score, this.cvssV4Source, this.owaspVector, this.owaspScore, this.owaspSource, options);
+        return new MakeAnalysisCommand(this.component, this.vulnerability, this.state, this.justification, this.response, this.details, this.suppress, this.commenter, this.comment, this.owaspVector, this.owaspScore, this.owaspSource, options);
     }
 
 }
