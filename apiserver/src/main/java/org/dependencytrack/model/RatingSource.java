@@ -25,34 +25,40 @@ package org.dependencytrack.model;
  *
  * <p>Precedence order (highest to lowest):</p>
  * <ol>
- *   <li>{@link #MANUAL} - User-provided rating that overrides all other sources</li>
+ *   <li>{@link #POLICY} - Rating applied by organizational policies (highest precedence)</li>
  *   <li>{@link #VEX} - Rating from VEX (Vulnerability Exploitability eXchange) documents</li>
- *   <li>{@link #POLICY} - Rating applied by organizational policies</li>
+ *   <li>{@link #MANUAL} - User-provided rating</li>
  *   <li>{@link #NVD} - Default rating from the National Vulnerability Database</li>
  * </ol>
+ *
+ * <p>Rationale: POLICY has highest precedence to enforce organizational security standards.
+ * VEX can overwrite MANUAL assessments as it represents authoritative context-aware analysis.
+ * MANUAL ratings serve as analyst notes but are subject to policy enforcement.</p>
  *
  * @since 5.8.0
  */
 public enum RatingSource {
 
     /**
-     * Rating manually set by a security analyst or user.
-     * This has the highest precedence and can only be overwritten by another MANUAL rating.
+     * Rating applied by an organizational policy.
+     * Has the highest precedence to enforce security standards across the organization.
+     * Cannot be overwritten by MANUAL, VEX, or NVD ratings.
      */
-    MANUAL(4),
+    POLICY(4),
 
     /**
      * Rating imported from a VEX (Vulnerability Exploitability eXchange) document.
-     * VEX ratings are context-specific and reflect the actual risk in a particular environment.
-     * Can overwrite POLICY and NVD ratings, but not MANUAL ratings.
+     * VEX ratings are context-specific and reflect authoritative risk assessment.
+     * Can overwrite MANUAL and NVD ratings, but not POLICY ratings.
      */
     VEX(3),
 
     /**
-     * Rating applied by an organizational policy.
-     * Can overwrite NVD ratings, but not MANUAL or VEX ratings.
+     * Rating manually set by a security analyst or user.
+     * Can overwrite NVD ratings, but not POLICY or VEX ratings.
+     * Serves as analyst notes subject to policy enforcement.
      */
-    POLICY(2),
+    MANUAL(2),
 
     /**
      * Default rating from the National Vulnerability Database (NVD) or other vulnerability sources.

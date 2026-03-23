@@ -24,49 +24,50 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for {@link RatingSource} precedence and overwrite logic.
+ * Precedence order: POLICY > VEX > MANUAL > NVD
  */
 class RatingSourceTest {
 
     @Test
     void testPrecedenceOrder() {
-        // Verify precedence values are correctly ordered
-        assertTrue(RatingSource.MANUAL.getPrecedence() > RatingSource.VEX.getPrecedence());
-        assertTrue(RatingSource.VEX.getPrecedence() > RatingSource.POLICY.getPrecedence());
-        assertTrue(RatingSource.POLICY.getPrecedence() > RatingSource.NVD.getPrecedence());
+        // Verify precedence values are correctly ordered: POLICY > VEX > MANUAL > NVD
+        assertTrue(RatingSource.POLICY.getPrecedence() > RatingSource.VEX.getPrecedence());
+        assertTrue(RatingSource.VEX.getPrecedence() > RatingSource.MANUAL.getPrecedence());
+        assertTrue(RatingSource.MANUAL.getPrecedence() > RatingSource.NVD.getPrecedence());
     }
 
     @Test
-    void testCanOverwrite_ManualOverwritesAll() {
-        // MANUAL should be able to overwrite everything, including itself
-        assertTrue(RatingSource.MANUAL.canOverwrite(RatingSource.MANUAL));
-        assertTrue(RatingSource.MANUAL.canOverwrite(RatingSource.VEX));
-        assertTrue(RatingSource.MANUAL.canOverwrite(RatingSource.POLICY));
-        assertTrue(RatingSource.MANUAL.canOverwrite(RatingSource.NVD));
-        assertTrue(RatingSource.MANUAL.canOverwrite(null));
+    void testCanOverwrite_PolicyOverwritesAll() {
+        // POLICY should be able to overwrite everything (highest precedence)
+        assertTrue(RatingSource.POLICY.canOverwrite(RatingSource.POLICY));
+        assertTrue(RatingSource.POLICY.canOverwrite(RatingSource.VEX));
+        assertTrue(RatingSource.POLICY.canOverwrite(RatingSource.MANUAL));
+        assertTrue(RatingSource.POLICY.canOverwrite(RatingSource.NVD));
+        assertTrue(RatingSource.POLICY.canOverwrite(null));
     }
 
     @Test
-    void testCanOverwrite_VexOverwritesPolicyAndNvd() {
-        // VEX should be able to overwrite itself, POLICY, and NVD
+    void testCanOverwrite_VexOverwritesManualAndNvd() {
+        // VEX should be able to overwrite itself, MANUAL, and NVD
         assertTrue(RatingSource.VEX.canOverwrite(RatingSource.VEX));
-        assertTrue(RatingSource.VEX.canOverwrite(RatingSource.POLICY));
+        assertTrue(RatingSource.VEX.canOverwrite(RatingSource.MANUAL));
         assertTrue(RatingSource.VEX.canOverwrite(RatingSource.NVD));
         assertTrue(RatingSource.VEX.canOverwrite(null));
 
-        // VEX should NOT be able to overwrite MANUAL
-        assertFalse(RatingSource.VEX.canOverwrite(RatingSource.MANUAL));
+        // VEX should NOT be able to overwrite POLICY
+        assertFalse(RatingSource.VEX.canOverwrite(RatingSource.POLICY));
     }
 
     @Test
-    void testCanOverwrite_PolicyOverwritesNvd() {
-        // POLICY should be able to overwrite itself and NVD
-        assertTrue(RatingSource.POLICY.canOverwrite(RatingSource.POLICY));
-        assertTrue(RatingSource.POLICY.canOverwrite(RatingSource.NVD));
-        assertTrue(RatingSource.POLICY.canOverwrite(null));
+    void testCanOverwrite_ManualOverwritesOnlyNvd() {
+        // MANUAL should be able to overwrite itself and NVD
+        assertTrue(RatingSource.MANUAL.canOverwrite(RatingSource.MANUAL));
+        assertTrue(RatingSource.MANUAL.canOverwrite(RatingSource.NVD));
+        assertTrue(RatingSource.MANUAL.canOverwrite(null));
 
-        // POLICY should NOT be able to overwrite MANUAL or VEX
-        assertFalse(RatingSource.POLICY.canOverwrite(RatingSource.MANUAL));
-        assertFalse(RatingSource.POLICY.canOverwrite(RatingSource.VEX));
+        // MANUAL should NOT be able to overwrite POLICY or VEX
+        assertFalse(RatingSource.MANUAL.canOverwrite(RatingSource.POLICY));
+        assertFalse(RatingSource.MANUAL.canOverwrite(RatingSource.VEX));
     }
 
     @Test
@@ -76,36 +77,45 @@ class RatingSourceTest {
         assertTrue(RatingSource.NVD.canOverwrite(null));
 
         // NVD should NOT be able to overwrite any higher precedence source
-        assertFalse(RatingSource.NVD.canOverwrite(RatingSource.MANUAL));
-        assertFalse(RatingSource.NVD.canOverwrite(RatingSource.VEX));
         assertFalse(RatingSource.NVD.canOverwrite(RatingSource.POLICY));
+        assertFalse(RatingSource.NVD.canOverwrite(RatingSource.VEX));
+        assertFalse(RatingSource.NVD.canOverwrite(RatingSource.MANUAL));
     }
 
     @Test
     void testCanOverwrite_NullSource() {
         // All sources should be able to overwrite null (no existing rating)
-        assertTrue(RatingSource.MANUAL.canOverwrite(null));
-        assertTrue(RatingSource.VEX.canOverwrite(null));
         assertTrue(RatingSource.POLICY.canOverwrite(null));
+        assertTrue(RatingSource.VEX.canOverwrite(null));
+        assertTrue(RatingSource.MANUAL.canOverwrite(null));
         assertTrue(RatingSource.NVD.canOverwrite(null));
     }
 
     @Test
-    void testRealWorldScenario_ManualOverridesVex() {
-        // Scenario: Security analyst manually sets OWASP score to 9.0 after investigation
-        // Later, a VEX document with score 7.2 is imported
-        // The manual rating should be preserved
-        assertFalse(RatingSource.VEX.canOverwrite(RatingSource.MANUAL),
-                "VEX import should not overwrite manual analyst assessment");
+    void testRealWorldScenario_PolicyEnforcesStandards() {
+        // Scenario: Analyst manually sets score to 5.0
+        // Later, organizational policy requires minimum 8.0 for this vulnerability type
+        // POLICY should overwrite MANUAL to enforce security standards
+        assertTrue(RatingSource.POLICY.canOverwrite(RatingSource.MANUAL),
+                "POLICY should enforce organizational security standards over manual assessments");
     }
 
     @Test
-    void testRealWorldScenario_VexOverridesPolicy() {
-        // Scenario: Organizational policy sets SQLi vulns to 8.0 minimum
-        // Later, a context-aware VEX document with score 7.2 is imported
-        // The VEX rating should overwrite the policy
-        assertTrue(RatingSource.VEX.canOverwrite(RatingSource.POLICY),
-                "Context-aware VEX ratings should overwrite generic policy ratings");
+    void testRealWorldScenario_VexOverridesManual() {
+        // Scenario: Analyst manually sets score to 9.0
+        // Later, authoritative VEX document provides context-aware score of 7.2
+        // VEX should overwrite MANUAL as it represents authoritative assessment
+        assertTrue(RatingSource.VEX.canOverwrite(RatingSource.MANUAL),
+                "Authoritative VEX ratings should overwrite manual assessments");
+    }
+
+    @Test
+    void testRealWorldScenario_PolicyNotOverwritableByManual() {
+        // Scenario: Policy sets minimum score 8.0
+        // Analyst tries to manually lower it to 5.0
+        // MANUAL should NOT be able to overwrite POLICY (policy enforcement)
+        assertFalse(RatingSource.MANUAL.canOverwrite(RatingSource.POLICY),
+                "Manual assessments should not override organizational policies");
     }
 
     @Test
@@ -115,5 +125,14 @@ class RatingSourceTest {
         // The new VEX rating should overwrite the old one
         assertTrue(RatingSource.VEX.canOverwrite(RatingSource.VEX),
                 "Updated VEX ratings should overwrite previous VEX ratings");
+    }
+
+    @Test
+    void testRealWorldScenario_PolicyCanBeUpdated() {
+        // Scenario: Policy sets score to 8.0
+        // Later, policy is updated to require score 9.0
+        // POLICY should be able to update itself
+        assertTrue(RatingSource.POLICY.canOverwrite(RatingSource.POLICY),
+                "Policies should be updatable by newer policy versions");
     }
 }

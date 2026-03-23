@@ -18,10 +18,12 @@ Ratings (CVSS v2/v3/v4 and OWASP RR) are now stored at the `Analysis` level (com
 
 Ratings are tracked with their source using the `RatingSource` enum, which enforces the following precedence order (highest to lowest):
 
-1. **MANUAL** (Precedence: 4) - User-provided rating that overrides all other sources
-2. **VEX** (Precedence: 3) - Rating from VEX documents, context-specific
-3. **POLICY** (Precedence: 2) - Rating applied by organizational policies
+1. **POLICY** (Precedence: 4) - Rating applied by organizational policies (highest precedence)
+2. **VEX** (Precedence: 3) - Rating from VEX documents, authoritative context-specific assessment
+3. **MANUAL** (Precedence: 2) - User-provided rating (analyst notes)
 4. **NVD** (Precedence: 1) - Default rating from vulnerability databases
+
+**Rationale:** POLICY has highest precedence to enforce organizational security standards. VEX can overwrite MANUAL assessments as it represents authoritative context-aware analysis. MANUAL ratings serve as analyst notes but are subject to policy enforcement.
 
 ### Precedence Rules
 
@@ -31,10 +33,11 @@ Ratings are tracked with their source using the `RatingSource` enum, which enfor
 
 **Example:**
 ```
-MANUAL (9.0) ← VEX (7.2)     ✗ VEX cannot overwrite MANUAL
-VEX (7.2)    ← POLICY (8.0)  ✗ POLICY cannot overwrite VEX
-POLICY (8.0) ← NVD (5.3)     ✗ NVD cannot overwrite POLICY
+POLICY (8.0) ← VEX (7.2)     ✗ VEX cannot overwrite POLICY
+VEX (7.2)    ← MANUAL (9.0)  ✗ MANUAL cannot overwrite VEX
+MANUAL (5.0) ← NVD (5.3)     ✗ NVD cannot overwrite MANUAL
 VEX (7.2)    ← VEX (8.5)     ✓ Updated VEX can overwrite previous VEX
+POLICY (8.0) ← POLICY (9.0)  ✓ Updated POLICY can overwrite previous POLICY
 ```
 
 ## Architecture
@@ -43,9 +46,9 @@ VEX (7.2)    ← VEX (8.5)     ✓ Updated VEX can overwrite previous VEX
 
 ```java
 public enum RatingSource {
-    MANUAL(4),    // Highest precedence
-    VEX(3),       // Context-aware from VEX documents
-    POLICY(2),    // Organizational policies
+    POLICY(4),    // Highest precedence - enforce organizational standards
+    VEX(3),       // Authoritative context-aware assessments
+    MANUAL(2),    // Analyst notes
     NVD(1)        // Default from vulnerability databases
 }
 ```
