@@ -18,7 +18,7 @@
         <maven.install.skip>true</maven.install.skip>
 
         <!-- Dependency Versions -->
-        <lib.cloud-sql-postgres-socket-factory.version>1.28.2</lib.cloud-sql-postgres-socket-factory.version>
+        <lib.cloud-sql-postgres-socket-factory.version>1.28.3</lib.cloud-sql-postgres-socket-factory.version>
         <lib.commons-compress.version>1.28.0</lib.commons-compress.version>
         <lib.owasp-rr-calculator.version>1.0.1</lib.owasp-rr-calculator.version>
         <lib.cyclonedx-java.version>12.1.0</lib.cyclonedx-java.version>
@@ -257,12 +257,6 @@
                     <artifactId>h2</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.dependencytrack</groupId>
-            <artifactId>alpine-test</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
         </dependency>
         <!-- Common Expression Language (CEL) -->
         <dependency>
@@ -510,6 +504,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.dependencytrack</groupId>
+            <artifactId>smallrye-config-source-memory</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5</artifactId>
             <scope>test</scope>
@@ -560,7 +560,6 @@
                 <includes>
                     <include>META-INF/MANIFEST.MF</include>
                     <include>application.version</include>
-                    <include>openapi-configuration.yaml</include>
                 </includes>
             </resource>
         </resources>

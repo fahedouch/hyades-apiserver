@@ -18,7 +18,7 @@
  */
 package org.dependencytrack.parser.cyclonedx.util;
 
-import alpine.common.logging.Logger;
+import alpine.config.AlpineConfigKeys;
 import alpine.model.IConfigProperty;
 import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
@@ -65,6 +65,10 @@ import org.dependencytrack.parser.spdx.expression.SpdxExpression;
 import org.dependencytrack.parser.spdx.expression.SpdxExpressionParser;
 import org.dependencytrack.persistence.QueryManager;
 import org.dependencytrack.util.VulnerabilityUtil;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -90,7 +94,7 @@ import static org.dependencytrack.util.PurlUtil.silentPurlCoordinatesOnly;
 
 public class ModelConverter {
 
-    private static final Logger LOGGER = Logger.getLogger(ModelConverter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ModelConverter.class);
 
     /**
      * Private Constructor.
@@ -797,8 +801,9 @@ public class ModelConverter {
         final org.cyclonedx.model.Metadata metadata = new org.cyclonedx.model.Metadata();
         final org.cyclonedx.model.Tool tool = new org.cyclonedx.model.Tool();
         tool.setVendor("OWASP");
-        tool.setName(alpine.Config.getInstance().getApplicationName());
-        tool.setVersion(alpine.Config.getInstance().getApplicationVersion());
+        final Config config = ConfigProvider.getConfig();
+        tool.setName(config.getValue(AlpineConfigKeys.BUILD_INFO_APPLICATION_NAME, String.class));
+        tool.setVersion(config.getValue(AlpineConfigKeys.BUILD_INFO_APPLICATION_VERSION, String.class));
         metadata.setTools(Collections.singletonList(tool));
         if (project != null) {
             metadata.setManufacture(convert(project.getManufacturer()));

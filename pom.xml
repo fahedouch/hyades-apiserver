@@ -30,6 +30,7 @@
         <module>support/datanucleus-plugin</module>
         <module>support/jdbi</module>
         <module>support/liquibase</module>
+        <module>support/smallrye-config-secret-handler-file</module>
         <module>support/smallrye-config-source-memory</module>
         <module>api</module>
         <module>alpine</module>
@@ -142,7 +143,7 @@
         <lib.minio.version>8.6.0</lib.minio.version>
         <lib.mockito.version>5.23.0</lib.mockito.version>
         <lib.okhttp.version>5.3.2</lib.okhttp.version>
-        <lib.open-feign.version>13.11</lib.open-feign.version>
+        <lib.open-feign.version>13.12</lib.open-feign.version>
         <lib.open-vulnerability-clients.version>9.0.5</lib.open-vulnerability-clients.version>
         <lib.packageurl.version>1.5.0</lib.packageurl.version>
         <lib.pebble.version>4.1.1</lib.pebble.version>
@@ -154,7 +155,7 @@
         <lib.smallrye-config.version>3.17.0</lib.smallrye-config.version>
         <lib.swagger.version>2.2.48</lib.swagger.version>
         <lib.system-stubs.version>2.1.8</lib.system-stubs.version>
-        <lib.testcontainers.version>2.0.4</lib.testcontainers.version>
+        <lib.testcontainers.version>2.0.5</lib.testcontainers.version>
         <lib.tink.version>1.21.0</lib.tink.version>
         <lib.versatile.version>0.18.0</lib.versatile.version>
         <lib.wiremock.version>3.13.2</lib.wiremock.version>
