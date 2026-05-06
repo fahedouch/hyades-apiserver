@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.dependencytrack</groupId>
         <artifactId>dependency-track-parent</artifactId>
-        <version>5.7.0-alpha.4-SNAPSHOT</version>
+        <version>5.7.0-alpha.6-SNAPSHOT</version>
     </parent>
 
     <artifactId>coverage-report</artifactId>
@@ -80,13 +80,6 @@
         </dependency>
         <dependency>
             <groupId>org.dependencytrack</groupId>
-            <artifactId>alpine-test</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.dependencytrack</groupId>
             <artifactId>apiserver</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
@@ -101,12 +94,6 @@
             <groupId>org.dependencytrack</groupId>
             <artifactId>datanucleus-plugin-test</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.dependencytrack</groupId>
-            <artifactId>liquibase-support</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.dependencytrack</groupId>
@@ -141,6 +128,12 @@
         <dependency>
             <groupId>org.dependencytrack</groupId>
             <artifactId>secret-management</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.dependencytrack</groupId>
+            <artifactId>smallrye-config-secret-handler-file</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
@@ -191,6 +184,13 @@
 
         <dependency>
             <groupId>org.dependencytrack</groupId>
+            <artifactId>jdbi-support</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.dependencytrack</groupId>
             <artifactId>notification-api</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
@@ -204,6 +204,13 @@
         <dependency>
             <groupId>org.dependencytrack</groupId>
             <artifactId>notification-templating</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.dependencytrack</groupId>
+            <artifactId>os-distro-metadata</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>

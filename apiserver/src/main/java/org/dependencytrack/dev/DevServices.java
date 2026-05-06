@@ -18,9 +18,10 @@
  */
 package org.dependencytrack.dev;
 
-import alpine.common.logging.Logger;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -29,23 +30,24 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import static org.dependencytrack.common.ConfigKey.DEV_SERVICES_IMAGE_FRONTEND;
-import static org.dependencytrack.common.ConfigKey.DEV_SERVICES_IMAGE_POSTGRES;
-import static org.dependencytrack.common.ConfigKey.DEV_SERVICES_PORT_FRONTEND;
+import static org.dependencytrack.common.ConfigKeys.DEV_SERVICES_ENABLED;
+import static org.dependencytrack.common.ConfigKeys.DEV_SERVICES_IMAGE_FRONTEND;
+import static org.dependencytrack.common.ConfigKeys.DEV_SERVICES_IMAGE_POSTGRES;
+import static org.dependencytrack.common.ConfigKeys.DEV_SERVICES_PORT_FRONTEND;
 
 /**
  * @since 5.5.0
  */
 public class DevServices implements AutoCloseable {
 
-    private static final Logger LOGGER = Logger.getLogger(DevServices.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DevServices.class);
 
     private final Config config = ConfigProvider.getConfig();
     private AutoCloseable postgresContainer;
     private AutoCloseable frontendContainer;
 
     public void start() {
-        if (!config.getValue("dt.dev.services.enabled", boolean.class)) {
+        if (!config.getValue(DEV_SERVICES_ENABLED, boolean.class)) {
             return;
         }
 
@@ -65,7 +67,7 @@ public class DevServices implements AutoCloseable {
         final String postgresUsername = config.getValue("dt.datasource.default.username", String.class);
         final String postgresPassword = config.getValue("dt.datasource.default.password", String.class);
 
-        final Integer frontendPort = config.getValue(DEV_SERVICES_PORT_FRONTEND.getPropertyName(), Integer.class);
+        final Integer frontendPort = config.getValue(DEV_SERVICES_PORT_FRONTEND, Integer.class);
         try {
             final Class<?> startablesClass = Class.forName("org.testcontainers.lifecycle.Startables");
             final Method deepStartMethod = startablesClass.getDeclaredMethod("deepStart", Collection.class);
@@ -81,7 +83,7 @@ public class DevServices implements AutoCloseable {
 
             final Class<?> postgresContainerClass = Class.forName("org.testcontainers.postgresql.PostgreSQLContainer");
             final Constructor<?> postgresContainerConstructor = postgresContainerClass.getDeclaredConstructor(String.class);
-            postgresContainer = (AutoCloseable) postgresContainerConstructor.newInstance(config.getValue(DEV_SERVICES_IMAGE_POSTGRES.getPropertyName(), String.class));
+            postgresContainer = (AutoCloseable) postgresContainerConstructor.newInstance(config.getValue(DEV_SERVICES_IMAGE_POSTGRES, String.class));
             postgresContainerClass.getMethod("withUsername", String.class).invoke(postgresContainer, postgresUsername);
             postgresContainerClass.getMethod("withPassword", String.class).invoke(postgresContainer, postgresPassword);
             postgresContainerClass.getMethod("withDatabaseName", String.class).invoke(postgresContainer, postgresDatabase);
@@ -89,11 +91,11 @@ public class DevServices implements AutoCloseable {
             addFixedExposedPortMethod.invoke(postgresContainer, /* hostPort */ postgresPort, /* containerPort */  5432);
 
             final Constructor<?> genericContainerConstructor = genericContainerClass.getDeclaredConstructor(String.class);
-            frontendContainer = (AutoCloseable) genericContainerConstructor.newInstance(config.getValue(DEV_SERVICES_IMAGE_FRONTEND.getPropertyName(), String.class));
+            frontendContainer = (AutoCloseable) genericContainerConstructor.newInstance(config.getValue(DEV_SERVICES_IMAGE_FRONTEND, String.class));
             genericContainerClass.getMethod("withEnv", String.class, String.class).invoke(frontendContainer, "API_BASE_URL", "http://localhost:8080");
             genericContainerClass.getMethod("withExposedPorts", Integer[].class).invoke(frontendContainer, (Object) new Integer[]{8080});
             addFixedExposedPortMethod.invoke(frontendContainer, /* hostPort */ frontendPort, /* containerPort */ 8080);
-            if (config.getValue(DEV_SERVICES_IMAGE_FRONTEND.getPropertyName(), String.class).endsWith(":snapshot")) {
+            if (config.getValue(DEV_SERVICES_IMAGE_FRONTEND, String.class).endsWith(":snapshot")) {
                 genericContainerClass.getMethod("withImagePullPolicy", imagePullPolicyClass).invoke(frontendContainer, alwaysPullPolicy);
             }
 

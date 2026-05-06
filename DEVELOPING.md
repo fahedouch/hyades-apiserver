@@ -2,6 +2,10 @@
 
 > Please also read [`CONTRIBUTING.md`](./CONTRIBUTING.md) and [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md).
 
+> [!IMPORTANT]
+> Substantial changes must be accompanied by an [Architecture Decision Record](./docs/adr/).
+> See the [criteria in `CONTRIBUTING.md`](./CONTRIBUTING.md#architecture-decision-records) before starting work.
+
 ## Prerequisites
 
 * JDK 21+ ([Temurin](https://adoptium.net/temurin/releases) distribution recommended)
@@ -32,7 +36,7 @@
 | [JDO](https://db.apache.org/jdo/)                                                           | Persistence specification |
 | [DataNucleus](https://www.datanucleus.org/products/accessplatform/jdo/getting_started.html) | JDO implementation        |
 | [JDBI](https://jdbi.org/)                                                                   | Database access           |
-| [Liquibase](https://www.liquibase.com/)                                                     | Database migrations       |
+| [Flyway](https://www.red-gate.com/products/flyway/)                                         | Database migrations       |
 | [MicroProfile Config](https://microprofile.io/specifications/microprofile-config/)          | Configuration             |
 | [Jetty](https://www.eclipse.org/jetty/)                                                     | Servlet container         |
 | [Apache Kafka](https://kafka.apache.org/)                                                   | Event streaming           |
@@ -128,6 +132,36 @@ make datanucleus-enhance
 ```
 
 Then re-run the test. Ensure your IDE is not cleaning the `target` directory before execution.
+
+## Database Migrations
+
+Schema changes are managed with [Flyway](https://www.red-gate.com/products/flyway/).
+The API server owns the schema and applies pending migrations at startup.
+
+Migrations live in [`migration/src/main/resources/org/dependencytrack/migration`](migration/src/main/resources/org/dependencytrack/migration)
+and follow Flyway's naming convention:
+
+* `V<timestamp>__<description>.sql` for versioned migrations, applied once in timestamp order.
+  `<timestamp>` is `YYYYMMDDHHMM` (UTC).
+* `R__<name>.sql` for repeatable migrations (stored procedures, functions, views).
+  Reapplied automatically when their content changes.
+
+### Adding a Migration
+
+Scaffold a new versioned migration:
+
+```shell
+make new-migration NAME="add foo column to bar"
+```
+
+This creates an empty `V<timestamp>__add_foo_column_to_bar.sql` file. Add your DDL/DML to it.
+
+For repeatable migrations, edit the relevant `R__*.sql` file directly, no new file needed.
+
+> [!IMPORTANT]
+> Do not modify versioned migrations already merged to `main`.
+> Flyway rejects checksum mismatches on existing deployments.
+> Add a new migration instead.
 
 ## Build Cache
 

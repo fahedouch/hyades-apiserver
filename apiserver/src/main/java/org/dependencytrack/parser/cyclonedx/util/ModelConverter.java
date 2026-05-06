@@ -18,7 +18,7 @@
  */
 package org.dependencytrack.parser.cyclonedx.util;
 
-import alpine.common.logging.Logger;
+import alpine.config.AlpineConfigKeys;
 import alpine.model.IConfigProperty;
 import com.github.packageurl.MalformedPackageURLException;
 import com.github.packageurl.PackageURL;
@@ -55,6 +55,7 @@ import org.dependencytrack.model.OrganizationalContact;
 import org.dependencytrack.model.OrganizationalEntity;
 import org.dependencytrack.model.Project;
 import org.dependencytrack.model.ProjectMetadata;
+import org.dependencytrack.model.Scope;
 import org.dependencytrack.model.ServiceComponent;
 import org.dependencytrack.model.Severity;
 import org.dependencytrack.model.Tools;
@@ -65,6 +66,10 @@ import org.dependencytrack.parser.spdx.expression.SpdxExpression;
 import org.dependencytrack.parser.spdx.expression.SpdxExpressionParser;
 import org.dependencytrack.persistence.QueryManager;
 import org.dependencytrack.util.VulnerabilityUtil;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -90,7 +95,7 @@ import static org.dependencytrack.util.PurlUtil.silentPurlCoordinatesOnly;
 
 public class ModelConverter {
 
-    private static final Logger LOGGER = Logger.getLogger(ModelConverter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ModelConverter.class);
 
     /**
      * Private Constructor.
@@ -202,6 +207,7 @@ public class ModelConverter {
         component.setDescription(trimToNull(cdxComponent.getDescription()));
         component.setCopyright(trimToNull(cdxComponent.getCopyright()));
         component.setCpe(trimToNull(cdxComponent.getCpe()));
+        component.setScope(Scope.getMappedScope(cdxComponent.getScope()));
         component.setExternalReferences(convertExternalReferences(cdxComponent.getExternalReferences()));
         component.setProperties(convertToComponentProperties(cdxComponent.getProperties()));
 
@@ -628,7 +634,7 @@ public class ModelConverter {
         return result;
     }
 
-    public static org.cyclonedx.model.Component convert(final QueryManager qm, final Component component) {
+    public static org.cyclonedx.model.Component convert(final Component component) {
         final org.cyclonedx.model.Component cycloneComponent = new org.cyclonedx.model.Component();
         cycloneComponent.setBomRef(component.getUuid().toString());
         cycloneComponent.setGroup(StringUtils.trimToNull(component.getGroup()));
@@ -637,6 +643,7 @@ public class ModelConverter {
         cycloneComponent.setDescription(StringUtils.trimToNull(component.getDescription()));
         cycloneComponent.setCopyright(StringUtils.trimToNull(component.getCopyright()));
         cycloneComponent.setCpe(StringUtils.trimToNull(component.getCpe()));
+        cycloneComponent.setScope(mapCdxScope(component.getScope()));
         cycloneComponent.setAuthor(StringUtils.trimToNull(convertContactsToString(component.getAuthors())));
         cycloneComponent.setSupplier(convert(component.getSupplier()));
         cycloneComponent.setProperties(convert(component.getProperties()));
@@ -797,8 +804,9 @@ public class ModelConverter {
         final org.cyclonedx.model.Metadata metadata = new org.cyclonedx.model.Metadata();
         final org.cyclonedx.model.Tool tool = new org.cyclonedx.model.Tool();
         tool.setVendor("OWASP");
-        tool.setName(alpine.Config.getInstance().getApplicationName());
-        tool.setVersion(alpine.Config.getInstance().getApplicationVersion());
+        final Config config = ConfigProvider.getConfig();
+        tool.setName(config.getValue(AlpineConfigKeys.BUILD_INFO_APPLICATION_NAME, String.class));
+        tool.setVersion(config.getValue(AlpineConfigKeys.BUILD_INFO_APPLICATION_VERSION, String.class));
         metadata.setTools(Collections.singletonList(tool));
         if (project != null) {
             metadata.setManufacture(convert(project.getManufacturer()));
@@ -1298,5 +1306,13 @@ public class ModelConverter {
                 .map(finding -> convert(qm, variant, finding))
                 .filter(vulnerabilitiesSeen::add)
                 .toList();
+    }
+
+    public static org.cyclonedx.model.Component.Scope mapCdxScope(Scope scope) {
+        return scope == null ? null : switch (scope) {
+            case REQUIRED -> org.cyclonedx.model.Component.Scope.REQUIRED;
+            case EXCLUDED -> org.cyclonedx.model.Component.Scope.EXCLUDED;
+            case OPTIONAL -> org.cyclonedx.model.Component.Scope.OPTIONAL;
+        };
     }
 }

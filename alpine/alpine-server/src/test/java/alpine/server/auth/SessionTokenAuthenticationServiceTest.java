@@ -18,14 +18,12 @@
  */
 package alpine.server.auth;
 
-import alpine.Config;
 import alpine.model.ManagedUser;
 import alpine.persistence.AlpineQueryManager;
 import alpine.server.persistence.PersistenceManagerFactory;
 import io.smallrye.config.SmallRyeConfigBuilder;
 import org.glassfish.jersey.server.ContainerRequest;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.security.Principal;
@@ -38,11 +36,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class SessionTokenAuthenticationServiceTest {
-
-    @BeforeAll
-    static void setUpClass() {
-        Config.enableUnitTests();
-    }
 
     @AfterEach
     void tearDown() {
@@ -137,6 +130,27 @@ class SessionTokenAuthenticationServiceTest {
 
         final var authService = new SessionTokenAuthenticationService(request);
         assertThat(authService.isSpecified()).isFalse();
+    }
+
+    @Test
+    void shouldAuthenticateRegardlessOfBearerSchemeCasing() throws Exception {
+        final ManagedUser user;
+        final String rawToken;
+        try (final var qm = new AlpineQueryManager()) {
+            user = qm.createManagedUser("testuser", "password");
+            rawToken = new SessionTokenService().createSession(user.getId());
+        }
+
+        for (final String prefix : List.of("Bearer ", "bearer ", "BEARER ", "BeArEr ")) {
+            final var request = mock(ContainerRequest.class);
+            when(request.getRequestHeader("Authorization")).thenReturn(List.of(prefix + rawToken));
+            final var authService = new SessionTokenAuthenticationService(request);
+
+            assertThat(authService.isSpecified()).isTrue();
+            final Principal principal = authService.authenticate();
+            assertThat(principal).isNotNull();
+            assertThat(principal.getName()).isEqualTo("testuser");
+        }
     }
 
     @Test

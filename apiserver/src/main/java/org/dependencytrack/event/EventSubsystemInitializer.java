@@ -18,12 +18,12 @@
  */
 package org.dependencytrack.event;
 
-import alpine.common.logging.Logger;
 import alpine.event.LdapSyncEvent;
 import alpine.event.framework.EventService;
 import alpine.event.framework.SingleThreadedEventService;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
+import org.dependencytrack.common.ConfigKeys;
 import org.dependencytrack.common.HttpClient;
 import org.dependencytrack.dex.engine.api.DexEngine;
 import org.dependencytrack.event.maintenance.MetricsMaintenanceEvent;
@@ -39,7 +39,6 @@ import org.dependencytrack.tasks.FortifySscUploadTask;
 import org.dependencytrack.tasks.InternalComponentIdentificationTask;
 import org.dependencytrack.tasks.KennaSecurityUploadTask;
 import org.dependencytrack.tasks.LdapSyncTaskWrapper;
-import org.dependencytrack.tasks.VexUploadProcessingTask;
 import org.dependencytrack.tasks.VulnerabilityAnalysisTask;
 import org.dependencytrack.tasks.maintenance.MetricsMaintenanceTask;
 import org.dependencytrack.tasks.maintenance.PackageMetadataMaintenanceTask;
@@ -48,6 +47,8 @@ import org.dependencytrack.tasks.maintenance.TagMaintenanceTask;
 import org.dependencytrack.tasks.maintenance.VulnerabilityDatabaseMaintenanceTask;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
@@ -62,7 +63,7 @@ import static java.util.Objects.requireNonNull;
  */
 public class EventSubsystemInitializer implements ServletContextListener {
 
-    private static final Logger LOGGER = Logger.getLogger(EventSubsystemInitializer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EventSubsystemInitializer.class);
 
     private final Config config;
     private final EventService eventService;
@@ -92,7 +93,6 @@ public class EventSubsystemInitializer implements ServletContextListener {
         final var secretManager = (SecretManager) event.getServletContext().getAttribute(SecretManager.class.getName());
         requireNonNull(secretManager, "secretManager has not been initialized");
 
-        eventService.subscribe(VexUploadEvent.class, new VexUploadProcessingTask());
         eventService.subscribe(LdapSyncEvent.class, new LdapSyncTaskWrapper());
         eventService.subscribe(
                 PortfolioVulnerabilityAnalysisEvent.class,
@@ -117,10 +117,9 @@ public class EventSubsystemInitializer implements ServletContextListener {
         LOGGER.info("Shutting down asynchronous event subsystem");
 
         final var drainTimeout = config
-                .getOptionalValue("dt.worker.pool.drain.timeout.duration", Duration.class)
+                .getOptionalValue(ConfigKeys.WORKER_POOL_DRAIN_TIMEOUT_DURATION, Duration.class)
                 .orElse(Duration.ofSeconds(30));
 
-        eventService.unsubscribe(VexUploadProcessingTask.class);
         eventService.unsubscribe(LdapSyncTaskWrapper.class);
         eventService.unsubscribe(VulnerabilityAnalysisTask.class);
         eventService.unsubscribe(VulnerabilityMetricsUpdateTask.class);

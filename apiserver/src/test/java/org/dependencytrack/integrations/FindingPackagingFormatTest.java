@@ -18,7 +18,7 @@
  */
 package org.dependencytrack.integrations;
 
-import alpine.Config;
+import alpine.config.AlpineConfigKeys;
 import net.javacrumbs.jsonunit.core.Option;
 import org.dependencytrack.PersistenceCapableTest;
 import org.dependencytrack.model.AnalysisState;
@@ -28,6 +28,7 @@ import org.dependencytrack.model.Severity;
 import org.dependencytrack.model.Vulnerability;
 import org.dependencytrack.model.VulnerabilityAlias;
 import org.dependencytrack.persistence.jdbi.FindingDao;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -52,12 +53,12 @@ public class FindingPackagingFormatTest extends PersistenceCapableTest {
         );
 
         assertThatJson(fpf.getDocument())
-                .withMatcher("appName", equalTo(Config.getInstance().getApplicationName()))
-                .withMatcher("appVersion", equalTo(Config.getInstance().getApplicationVersion()))
+                .withMatcher("appName", equalTo(ConfigProvider.getConfig().getValue(AlpineConfigKeys.BUILD_INFO_APPLICATION_NAME, String.class)))
+                .withMatcher("appVersion", equalTo(ConfigProvider.getConfig().getValue(AlpineConfigKeys.BUILD_INFO_APPLICATION_VERSION, String.class)))
                 .withMatcher("projectUuid", equalTo(project.getUuid().toString()))
                 .isEqualTo(/* language=JSON */ """
                         {
-                          "version": "1.2",
+                          "version": "1.3",
                           "meta": {
                             "application": "${json-unit.matches:appName}",
                             "version": "${json-unit.matches:appVersion}",
@@ -80,7 +81,7 @@ public class FindingPackagingFormatTest extends PersistenceCapableTest {
                 "Test", "Sample project", "1.0", null, null, null, null, false);
 
         final var findingRow1 = new FindingDao.FindingRow(project.getUuid(), UUID.randomUUID(), project.getName(), project.getVersion(),
-                "component-name-1", null, "component-version", null, null, true,
+                "component-name-1", null, "component-version", null, null, "Optional", true,
                 UUID.randomUUID(), Vulnerability.Source.GITHUB, "vuln-vulnId-1", "vuln-title", "vuln-subtitle", "vuln-description",
                 "vuln-recommendation", "vuln-references", Instant.now(), Severity.CRITICAL, null, BigDecimal.valueOf(7.2), BigDecimal.valueOf(8.4), BigDecimal.valueOf(8.4),
                 "cvssV2-vector", "cvssV3-vector", "cvssV4-vector", BigDecimal.valueOf(1.25), BigDecimal.valueOf(1.75), BigDecimal.valueOf(1.3),
@@ -109,7 +110,7 @@ public class FindingPackagingFormatTest extends PersistenceCapableTest {
         other.setVulnDbId(null);
 
         final var findingRow2 = new FindingDao.FindingRow(project.getUuid(), UUID.randomUUID(), project.getName(), project.getVersion(),
-                "component-name-2", null, "component-version", null, null, true,
+                "component-name-2", null, "component-version", null, null, "Required", true,
                 UUID.randomUUID(), Vulnerability.Source.NVD, "vuln-vulnId-2", "vuln-title", "vuln-subtitle", "vuln-description",
                 "vuln-recommendation", "vuln-references", Instant.now(), Severity.HIGH, null, BigDecimal.valueOf(7.2), BigDecimal.valueOf(8.4), BigDecimal.valueOf(8.4),
                 "cvssV2-vector", "cvssV3-vector", "cvssV4vector", BigDecimal.valueOf(1.25), BigDecimal.valueOf(1.75), BigDecimal.valueOf(1.3),
@@ -128,7 +129,7 @@ public class FindingPackagingFormatTest extends PersistenceCapableTest {
                 .withMatcher("projectUuid", equalTo(project.getUuid().toString()))
                 .isEqualTo(/* language=JSON */ """
                         {
-                          "version": "1.2",
+                          "version": "1.3",
                           "meta": {
                             "application": "${json-unit.any-string}",
                             "version": "${json-unit.any-string}",
@@ -149,7 +150,8 @@ public class FindingPackagingFormatTest extends PersistenceCapableTest {
                                 "project": "${json-unit.matches:projectUuid}",
                                 "hasOccurrences": true,
                                 "projectName": "Test",
-                                "projectVersion": "1.0"
+                                "projectVersion": "1.0",
+                                "scope": "Optional"
                               },
                               "vulnerability": {
                                 "uuid": "${json-unit.any-string}",
@@ -195,7 +197,8 @@ public class FindingPackagingFormatTest extends PersistenceCapableTest {
                                 "project": "${json-unit.matches:projectUuid}",
                                 "hasOccurrences": true,
                                 "projectName": "Test",
-                                "projectVersion": "1.0"
+                                "projectVersion": "1.0",
+                                "scope": "Required"
                               },
                               "vulnerability": {
                                 "uuid": "${json-unit.any-string}",
