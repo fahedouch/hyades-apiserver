@@ -56,6 +56,7 @@ import org.dependencytrack.dex.engine.api.response.CreateWorkflowRunResponse;
 import org.dependencytrack.dex.proto.event.v1.WorkflowEvent;
 import org.dependencytrack.dex.proto.payload.v1.Payload;
 import org.eclipse.microprofile.health.HealthCheckResponse;
+import org.jdbi.v3.core.Jdbi;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -74,6 +75,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1200,6 +1202,48 @@ class DexEngineImplTest {
     }
 
     @Test
+    void shouldDiscardActivityExecutionWhenLockIsLost() {
+        final var invocations = new AtomicInteger();
+        final var lockLostObserved = new AtomicBoolean();
+        final var successorStarted = new CountDownLatch(1);
+
+        registerWorkflow("test", (ctx, _) -> {
+            ctx.callActivity("test", ACTIVITY_TASK_QUEUE, null, voidConverter(), voidConverter(), RetryPolicy.ofDefault()).await();
+            return null;
+        });
+
+        engine.registerActivityInternal(
+                "test", voidConverter(), voidConverter(), ACTIVITY_TASK_QUEUE, Duration.ofSeconds(1),
+                (ctx, _) -> {
+                    if (invocations.incrementAndGet() > 1) {
+                        successorStarted.countDown();
+                        return null;
+                    }
+
+                    assertThat(successorStarted.await(30, TimeUnit.SECONDS)).isTrue();
+
+                    try {
+                        ctx.maybeHeartbeat();
+                    } catch (TaskLockLostException e) {
+                        lockLostObserved.set(true);
+                        throw e;
+                    }
+
+                    return null;
+                });
+        registerWorkflowWorker("workflow-worker", 1);
+        registerTaskWorker("activity-worker", 2);
+        engine.start();
+
+        final UUID runId = engine.createRun(new CreateWorkflowRunRequest<>("test", 1));
+        awaitRunStatus(runId, WorkflowRunStatus.COMPLETED);
+
+        await("Displaced execution to observe the lost lock")
+                .untilAsserted(() -> assertThat(lockLostObserved).isTrue());
+        assertThat(invocations.get()).isGreaterThanOrEqualTo(2);
+    }
+
+    @Test
     void shouldCancelActivitiesDuringGracefulShutdown() throws Exception {
         final var activityStarted = new AtomicBoolean(false);
         final var activityInterrupted = new AtomicBoolean(false);
@@ -1231,6 +1275,44 @@ class DexEngineImplTest {
         engine.close();
 
         assertThat(activityInterrupted).isTrue();
+    }
+
+    @Test
+    void shouldAbandonActivityInterruptedDuringShutdownInsteadOfFailingIt() throws Exception {
+        final var activityStarted = new AtomicBoolean(false);
+        final var activityBlockedLatch = new CountDownLatch(1);
+
+        registerWorkflow("test", (ctx, _) -> {
+            ctx.callActivity("test", ACTIVITY_TASK_QUEUE, null, voidConverter(), voidConverter(), RetryPolicy.ofDefault()).await();
+            return null;
+        });
+        registerActivity("test", (_, _) -> {
+            activityStarted.set(true);
+            try {
+                activityBlockedLatch.await(1, TimeUnit.MINUTES);
+            } catch (InterruptedException e) {
+                throw new IllegalStateException("Interrupted", e);
+            }
+            return null;
+        });
+        registerWorkflowWorker("workflow-worker", 1);
+        registerTaskWorker("activity-worker", 1);
+        engine.start();
+
+        final UUID runId = engine.createRun(new CreateWorkflowRunRequest<>("test", 1));
+
+        await("Activity start")
+                .atMost(Duration.ofSeconds(3))
+                .until(activityStarted::get);
+
+        engine.close();
+        
+        final Integer attempt = Jdbi.create(dataSource).withHandle(handle -> handle
+                .createQuery("SELECT attempt FROM dex_activity_task WHERE workflow_run_id = :runId")
+                .bind("runId", runId)
+                .mapTo(Integer.class)
+                .one());
+        assertThat(attempt).isEqualTo(1);
     }
 
     @Test

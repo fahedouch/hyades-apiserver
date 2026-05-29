@@ -740,6 +740,7 @@ final class DexEngineImpl implements DexEngine {
 
         return new WorkflowRun(
                 runState.id(),
+                runState.parentId(),
                 runState.workflowName(),
                 runState.workflowVersion(),
                 runState.workflowInstanceId(),
@@ -1144,6 +1145,7 @@ final class DexEngineImpl implements DexEngine {
             if (!runsCompletedEventListeners.isEmpty() && run.status().isTerminal()) {
                 completedRuns.add(new WorkflowRunMetadata(
                         run.id(),
+                        run.parentId(),
                         run.workflowName(),
                         run.workflowVersion(),
                         run.workflowInstanceId(),
@@ -1608,7 +1610,7 @@ final class DexEngineImpl implements DexEngine {
             if (lock != null) {
                 future.complete(lock);
             } else {
-                future.completeExceptionally(new IllegalStateException());
+                future.completeExceptionally(new TaskLockLostException());
             }
         }
     }

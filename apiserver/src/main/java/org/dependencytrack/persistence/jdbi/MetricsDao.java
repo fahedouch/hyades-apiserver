@@ -605,12 +605,32 @@ public interface MetricsDao extends SqlObject {
         int deletedCount = 0;
         for (final String partition : partitions) {
             requireValidTableIdentifier(partition);
-            getHandle().execute("ALTER TABLE %s DETACH PARTITION %s CONCURRENTLY".formatted(parentTable, partition));
+            if (isPartitionDetachPending(parentTable, partition)) {
+                getHandle().useTransaction(trx -> {
+                    trx.execute("SET LOCAL lock_timeout = '5s'");
+                    trx.execute("ALTER TABLE %s DETACH PARTITION %s FINALIZE".formatted(parentTable, partition));
+                });
+            } else {
+                getHandle().execute("ALTER TABLE %s DETACH PARTITION %s CONCURRENTLY".formatted(parentTable, partition));
+            }
             getHandle().execute("DROP TABLE IF EXISTS %s CASCADE".formatted(partition));
             deletedCount++;
         }
-
         return deletedCount;
+    }
+
+    default boolean isPartitionDetachPending(String parentTable, String partition) {
+        return getHandle().createQuery("""
+                SELECT inhdetachpending
+                  FROM pg_inherits
+                  WHERE inhparent = CAST(:parentTable AS regclass)
+                    AND inhrelid = CAST(:partition AS regclass)
+                """)
+                .bind("parentTable", parentTable)
+                .bind("partition", partition)
+                .mapTo(Boolean.class)
+                .findOne()
+                .orElse(false);
     }
 
     private static void requireValidTableIdentifier(final String identifier) {

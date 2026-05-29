@@ -18,7 +18,6 @@
  */
 package org.dependencytrack.resources.v1;
 
-import alpine.event.framework.Event;
 import alpine.persistence.PaginatedResult;
 import alpine.server.auth.PermissionRequired;
 import com.github.packageurl.MalformedPackageURLException;
@@ -34,6 +33,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.inject.Inject;
 import jakarta.validation.Validator;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -48,7 +48,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.commons.lang3.StringUtils;
 import org.dependencytrack.auth.Permissions;
-import org.dependencytrack.event.InternalComponentIdentificationEvent;
+import org.dependencytrack.dex.engine.api.DexEngine;
+import org.dependencytrack.dex.engine.api.request.CreateWorkflowRunRequest;
 import org.dependencytrack.model.Component;
 import org.dependencytrack.model.ComponentIdentity;
 import org.dependencytrack.model.ComponentOccurrence;
@@ -56,15 +57,14 @@ import org.dependencytrack.model.License;
 import org.dependencytrack.model.PackageMetadata;
 import org.dependencytrack.model.Project;
 import org.dependencytrack.model.RepositoryMetaComponent;
-import org.dependencytrack.model.RepositoryType;
 import org.dependencytrack.model.validation.ValidUuid;
 import org.dependencytrack.persistence.QueryManager;
 import org.dependencytrack.persistence.jdbi.ComponentDao;
-import org.dependencytrack.persistence.jdbi.ComponentMetaDao;
 import org.dependencytrack.persistence.jdbi.PackageMetadataDao;
 import org.dependencytrack.resources.AbstractApiResource;
 import org.dependencytrack.resources.v1.openapi.PaginatedApi;
 import org.dependencytrack.resources.v1.problems.ProblemDetails;
+import org.dependencytrack.tasks.IdentifyInternalComponentsWorkflow;
 import org.dependencytrack.util.InternalComponentIdentifier;
 import org.dependencytrack.util.PurlUtil;
 import org.jdbi.v3.core.Handle;
@@ -74,6 +74,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.dependencytrack.dex.DexWorkflowLabels.WF_LABEL_TRIGGERED_BY;
 import static org.dependencytrack.persistence.jdbi.JdbiFactory.openJdbiHandle;
 import static org.dependencytrack.persistence.jdbi.JdbiFactory.withJdbiHandle;
 
@@ -90,6 +91,13 @@ import static org.dependencytrack.persistence.jdbi.JdbiFactory.withJdbiHandle;
         @SecurityRequirement(name = "BearerAuth")
 })
 public class ComponentResource extends AbstractApiResource {
+
+    private final DexEngine dexEngine;
+
+    @Inject
+    ComponentResource(DexEngine dexEngine) {
+        this.dexEngine = dexEngine;
+    }
 
     @GET
     @Path("/project/{uuid}")
@@ -158,27 +166,17 @@ public class ComponentResource extends AbstractApiResource {
             @Parameter(description = "The UUID of the component to retrieve", schema = @Schema(type = "string", format = "uuid"), required = true)
             @PathParam("uuid") @ValidUuid String uuid,
             @Parameter(description = "Optionally includes third-party metadata about the component from external repositories")
-            @QueryParam("includeRepositoryMetaData") boolean includeRepositoryMetaData,
-            @QueryParam("includeIntegrityMetaData") boolean includeIntegrityMetaData) {
+            @QueryParam("includeRepositoryMetaData") boolean includeRepositoryMetaData) {
         try (QueryManager qm = new QueryManager()) {
             final Component component = qm.getObjectByUuid(Component.class, uuid);
             if (component != null) {
                 requireAccess(qm, component.getProject());
                 final Component detachedComponent = qm.detach(Component.class, component.getId()); // TODO: Force project to be loaded. It should be anyway, but JDO seems to be having issues here.
-                if ((includeRepositoryMetaData || includeIntegrityMetaData) && detachedComponent.getPurl() != null) {
-                    final RepositoryType type = RepositoryType.resolve(detachedComponent.getPurl());
-                    if (RepositoryType.UNSUPPORTED != type) {
-                        if (includeRepositoryMetaData) {
-                            final PackageMetadata packageMetadata = withJdbiHandle(
-                                    handle -> new PackageMetadataDao(handle).get(detachedComponent.getPurl()));
-                            if (packageMetadata != null) {
-                                detachedComponent.setRepositoryMeta(RepositoryMetaComponent.of(packageMetadata));
-                            }
-                        }
-                        if (includeIntegrityMetaData) {
-                            detachedComponent.setComponentMetaInformation(withJdbiHandle(
-                                    handle -> handle.attach(ComponentMetaDao.class).getComponentMetaInfo(component.getUuid())));
-                        }
+                if (includeRepositoryMetaData && detachedComponent.getPurl() != null) {
+                    final PackageMetadata packageMetadata = withJdbiHandle(
+                            handle -> new PackageMetadataDao(handle).get(detachedComponent.getPurl()));
+                    if (packageMetadata != null) {
+                        detachedComponent.setRepositoryMeta(RepositoryMetaComponent.of(packageMetadata));
                     }
                 }
                 return Response.ok(detachedComponent).build();
@@ -252,7 +250,7 @@ public class ComponentResource extends AbstractApiResource {
                     StringUtils.trimToNull(swidTagId), StringUtils.trimToNull(group), StringUtils.trimToNull(name),
                     StringUtils.trimToNull(version));
             if (identity.getGroup() == null && identity.getName() == null && identity.getVersion() == null
-                && identity.getPurl() == null && identity.getCpe() == null && identity.getSwidTagId() == null) {
+                    && identity.getPurl() == null && identity.getCpe() == null && identity.getSwidTagId() == null) {
                 return Response.ok().header(TOTAL_COUNT_HEADER, 0).build();
             } else {
                 final PaginatedResult result = qm.getComponents(
@@ -578,7 +576,10 @@ public class ComponentResource extends AbstractApiResource {
     })
     @PermissionRequired({Permissions.Constants.SYSTEM_CONFIGURATION, Permissions.Constants.SYSTEM_CONFIGURATION_READ})
     public Response identifyInternalComponents() {
-        Event.dispatch(new InternalComponentIdentificationEvent());
+        dexEngine.createRun(
+                new CreateWorkflowRunRequest<>(IdentifyInternalComponentsWorkflow.class)
+                        .withWorkflowInstanceId(IdentifyInternalComponentsWorkflow.INSTANCE_ID)
+                        .withLabels(Map.of(WF_LABEL_TRIGGERED_BY, getPrincipal().getName())));
         return Response.status(Response.Status.NO_CONTENT).build();
     }
 

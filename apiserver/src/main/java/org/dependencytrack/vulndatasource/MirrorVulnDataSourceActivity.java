@@ -18,7 +18,6 @@
  */
 package org.dependencytrack.vulndatasource;
 
-import com.google.protobuf.util.Timestamps;
 import org.cyclonedx.proto.v1_7.Bom;
 import org.dependencytrack.common.MdcScope;
 import org.dependencytrack.dex.api.Activity;
@@ -43,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.jdo.Query;
+import java.io.Closeable;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -82,10 +82,8 @@ public final class MirrorVulnDataSourceActivity implements Activity<MirrorVulnDa
             throw new TerminalApplicationFailureException("No argument or data source name provided");
         }
 
-        final Vulnerability.Source source;
-        try {
-            source = Vulnerability.Source.valueOf(arg.getSourceName());
-        } catch (IllegalArgumentException e) {
+        final var source = Vulnerability.Source.ofName(arg.getSourceName());
+        if (source == null) {
             throw new TerminalApplicationFailureException(
                     "Invalid source name: %s".formatted(arg.getSourceName()));
         }
@@ -110,9 +108,13 @@ public final class MirrorVulnDataSourceActivity implements Activity<MirrorVulnDa
             final long startTimeNs = System.nanoTime();
             long lastHeartbeatNs = startTimeNs;
             int vulnsProcessed = 0;
-            int vulnsSkipped = 0;
 
-            try (final VulnDataSource dataSource = dataSourceFactory.create()) {
+            final VulnDataSource dataSource = dataSourceFactory.create();
+
+            // NB: Give the data source the chance to persist its pending state
+            // when the activity got interrupted. That requires temporarily popping
+            // the interrupt flag from the thread before invoking close() on it.
+            try (var _ = (Closeable) () -> closeUninterruptibly(dataSource)) {
                 final var bovBatch = new ArrayList<Bom>(25);
                 while (dataSource.hasNext()) {
                     if (Thread.interrupted()) {
@@ -121,23 +123,15 @@ public final class MirrorVulnDataSourceActivity implements Activity<MirrorVulnDa
                     ctx.maybeHeartbeat();
 
                     final Bom bov = dataSource.next();
-                    if (!bov.getVulnerabilities(0).hasRejected()) {
-                        bovBatch.add(bov);
-                        if (bovBatch.size() == 25) {
-                            processBatch(dataSource, bovBatch, source, arg.getDataSourceName(), updatePolicy);
-                            vulnsProcessed += bovBatch.size();
-                            bovBatch.clear();
-                            if (System.nanoTime() - lastHeartbeatNs >= HEARTBEAT_LOG_INTERVAL.toNanos()) {
-                                LOGGER.info("Processed {} vulnerabilities so far", vulnsProcessed);
-                                lastHeartbeatNs = System.nanoTime();
-                            }
+                    bovBatch.add(bov);
+                    if (bovBatch.size() == 25) {
+                        processBatch(dataSource, bovBatch, source, arg.getDataSourceName(), updatePolicy);
+                        vulnsProcessed += bovBatch.size();
+                        bovBatch.clear();
+                        if (System.nanoTime() - lastHeartbeatNs >= HEARTBEAT_LOG_INTERVAL.toNanos()) {
+                            LOGGER.info("Processed {} vulnerabilities so far", vulnsProcessed);
+                            lastHeartbeatNs = System.nanoTime();
                         }
-                    } else {
-                        vulnsSkipped++;
-                        LOGGER.warn(
-                                "Skipping vulnerability {} rejected at {}",
-                                bov.getVulnerabilities(0).getId(),
-                                Timestamps.toString(bov.getVulnerabilities(0).getRejected()));
                     }
                 }
 
@@ -150,9 +144,8 @@ public final class MirrorVulnDataSourceActivity implements Activity<MirrorVulnDa
             }
 
             LOGGER.info(
-                    "Completed mirror; processed {} vulnerabilities ({} skipped) in {}",
+                    "Completed mirror; processed {} vulnerabilities in {}",
                     vulnsProcessed,
-                    vulnsSkipped,
                     Duration.ofNanos(System.nanoTime() - startTimeNs));
         }
 
@@ -256,6 +249,17 @@ public final class MirrorVulnDataSourceActivity implements Activity<MirrorVulnDa
             return query.executeUnique();
         } finally {
             query.closeAll();
+        }
+    }
+
+    private static void closeUninterruptibly(VulnDataSource dataSource) {
+        final boolean interrupted = Thread.interrupted();
+        try {
+            dataSource.close();
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 

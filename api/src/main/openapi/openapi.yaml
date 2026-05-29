@@ -66,6 +66,16 @@ info:
     Note that if no sortable fields are documented for an operation,
     sorting is not supported *at all*.
 
+    ## Field expansion
+
+    Some collection endpoints support an `expand` query parameter.
+    Passing an expand value includes optional fields in each response item
+    that are omitted by default, typically because they are expensive to compute
+    and only needed in specific contexts.
+
+    Valid `expand` values for an endpoint are listed in its operation description.
+    Unknown values are silently ignored.
+
     ## Errors
 
     All error responses use the `application/problem+json` media type
@@ -221,8 +231,10 @@ paths:
     $ref: "./resources/vuln-policies/vuln-policy-bundles.yaml"
   /vuln-policy-bundles/{uuid}:
     $ref: "./resources/vuln-policies/vuln-policy-bundle.yaml"
-  /vuln-policy-bundles/{uuid}/sync:
-    $ref: "./resources/vuln-policies/vuln-policy-bundle-sync.yaml"
+  /vuln-policy-bundles/{uuid}/sync-runs:
+    $ref: "./resources/vuln-policies/vuln-policy-bundle-sync-runs.yaml"
+  /vuln-policy-bundles/{uuid}/sync-runs/latest:
+    $ref: "./resources/vuln-policies/vuln-policy-bundle-sync-run-latest.yaml"
   /vuln-data-sources/{name}/mirror-runs:
     $ref: "./resources/vuln-data-sources/vuln-data-source-mirror-runs.yaml"
   /vuln-data-sources/{name}/mirror-runs/latest:
